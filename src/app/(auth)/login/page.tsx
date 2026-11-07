@@ -71,12 +71,17 @@ function LoginForm() {
       router.push(targetPath);
       router.refresh();
     } catch (err: unknown) {
-      const message =
+      let message =
         err instanceof Error
           ? err.message
           : "Invalid email or password. Please verify and try again.";
+
+      if (message.toLowerCase().includes("failed to fetch") || message.toLowerCase().includes("networkerror")) {
+        message = "Cannot connect to Supabase: Your Supabase project appears to be paused due to inactivity, or the network is unreachable. Please visit supabase.com/dashboard and click 'Restore project' to unpause it.";
+      }
+
       setErrorMsg(message);
-      toast.error(message);
+      toast.error(message, { duration: 8000 });
     } finally {
       setLoading(false);
     }
@@ -142,7 +147,7 @@ function LoginForm() {
                 id="email"
                 type="email"
                 required
-                placeholder="student@geoattend.app"
+                placeholder="student@geoattend.edu"
                 className="pl-10"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
