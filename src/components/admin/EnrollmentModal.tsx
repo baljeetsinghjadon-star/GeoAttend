@@ -30,30 +30,13 @@ export function EnrollmentModal({
     setLoading(true);
 
     try {
-      const supabase = createClient();
+      const res = await fetch(`/api/classes/enroll?classId=${selectedClass.id}`);
+      const json = await res.json();
 
-      // Get enrolled students
-      const { data: enrollments, error: enrollErr } = await supabase
-        .from("class_enrollments")
-        .select("student_id, profiles(*)")
-        .eq("class_id", selectedClass.id);
+      if (!res.ok) throw new Error(json.error || "Failed to load class roster");
 
-      if (enrollErr) throw enrollErr;
-
-      const enrolled =
-        (enrollments
-          ?.map((e: unknown) => (e as { profiles: Profile }).profiles)
-          .filter(Boolean) as Profile[]) || [];
-      setEnrolledStudents(enrolled);
-
-      // Get all students for the dropdown
-      const { data: students, error: studentErr } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("role", "student");
-
-      if (studentErr) throw studentErr;
-      setAllStudents(students || []);
+      setEnrolledStudents(json.enrolledStudents || []);
+      setAllStudents(json.allStudents || []);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to load class roster";
       toast.error(msg);
@@ -72,23 +55,21 @@ export function EnrollmentModal({
     if (!selectedClass || !studentToEnroll) return;
 
     try {
-      const supabase = createClient();
-      const { error } = await supabase.from("class_enrollments").insert({
-        class_id: selectedClass.id,
-        student_id: studentToEnroll,
+      const res = await fetch("/api/classes/enroll", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          classId: selectedClass.id,
+          studentId: studentToEnroll,
+        }),
       });
 
-      if (error) {
-        if (error.code === "23505") {
-          toast.info("Student is already enrolled in this class");
-        } else {
-          throw error;
-        }
-      } else {
-        toast.success("Student enrolled successfully!");
-        setStudentToEnroll("");
-        fetchRoster();
-      }
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to enroll student");
+
+      toast.success("Student enrolled successfully!");
+      setStudentToEnroll("");
+      fetchRoster();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to enroll student";
       toast.error(msg);
@@ -100,14 +81,13 @@ export function EnrollmentModal({
     if (!confirm(`Remove ${studentName} from this class?`)) return;
 
     try {
-      const supabase = createClient();
-      const { error } = await supabase
-        .from("class_enrollments")
-        .delete()
-        .eq("class_id", selectedClass.id)
-        .eq("student_id", studentId);
+      const res = await fetch(`/api/classes/enroll?classId=${selectedClass.id}&studentId=${studentId}`, {
+        method: "DELETE",
+      });
 
-      if (error) throw error;
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to remove student");
+
       toast.success("Student removed from roster");
       fetchRoster();
     } catch (err: unknown) {

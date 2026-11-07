@@ -44,10 +44,10 @@ export function SessionForm({
     async function loadSelectData() {
       const supabase = createClient();
       const [classRes, zoneRes] = await Promise.all([
-        supabase.from("classes").select("*").order("name"),
+        fetch("/api/classes").then((r) => r.json()),
         supabase.from("zones").select("*").order("name"),
       ]);
-      setClasses(classRes.data || []);
+      setClasses(classRes.classes || []);
       setZones(zoneRes.data || []);
     }
 

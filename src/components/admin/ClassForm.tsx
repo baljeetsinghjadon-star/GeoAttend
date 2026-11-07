@@ -65,44 +65,33 @@ export function ClassForm({
     setLoading(true);
 
     try {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const payload: Record<string, unknown> = {
+        name,
+        code: code.toUpperCase().trim(),
+        description,
+      };
 
-      // If teacher role, teacherId defaults to current teacher
-      const effectiveTeacherId =
-        userRole === "teacher" ? user?.id : teacherId || user?.id;
-
-      if (!effectiveTeacherId) {
-        throw new Error("Please select an assigned instructor");
+      if (userRole === "admin") {
+        payload.teacherId = teacherId;
       }
 
       if (classToEdit) {
-        const { error } = await supabase
-          .from("classes")
-          .update({
-            name,
-            code: code.toUpperCase().trim(),
-            description,
-            teacher_id: effectiveTeacherId,
-          })
-          .eq("id", classToEdit.id);
-
-        if (error) throw error;
-        toast.success("Class updated successfully");
-      } else {
-        const { error } = await supabase.from("classes").insert({
-          name,
-          code: code.toUpperCase().trim(),
-          description,
-          teacher_id: effectiveTeacherId,
-        });
-
-        if (error) throw error;
-        toast.success("Class created successfully");
+        payload.id = classToEdit.id;
       }
 
+      const res = await fetch("/api/classes", {
+        method: classToEdit ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to save course");
+      }
+
+      toast.success(classToEdit ? "Class updated successfully" : "Class created successfully");
       onSuccess();
       onOpenChange(false);
     } catch (err: unknown) {

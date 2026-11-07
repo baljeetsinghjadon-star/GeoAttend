@@ -30,39 +30,14 @@ export function ClassManager({ role }: ClassManagerProps) {
   const fetchClasses = async () => {
     setLoading(true);
     try {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const res = await fetch("/api/classes");
+      const json = await res.json();
 
-      let query = supabase
-        .from("classes")
-        .select("*, teacher:profiles!classes_teacher_id_fkey(full_name, email)");
-
-      if (role === "teacher" && user) {
-        query = query.eq("teacher_id", user.id);
+      if (!res.ok) {
+        throw new Error(json.error || "Failed to load classes");
       }
 
-      const { data, error } = await query.order("created_at", { ascending: false });
-      if (error) throw error;
-
-      // Fetch enrollment counts
-      const classesWithCounts = await Promise.all(
-        (data || []).map(async (cls) => {
-          const { count } = await supabase
-            .from("class_enrollments")
-            .select("*", { count: "exact", head: true })
-            .eq("class_id", cls.id);
-
-          return {
-            ...cls,
-            enrollmentCount: count || 0,
-            teacherName: cls.teacher?.full_name || "Assigned Teacher",
-          };
-        })
-      );
-
-      setClasses(classesWithCounts);
+      setClasses(json.classes || []);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to load classes";
       toast.error(msg);
@@ -81,9 +56,14 @@ export function ClassManager({ role }: ClassManagerProps) {
     }
 
     try {
-      const supabase = createClient();
-      const { error } = await supabase.from("classes").delete().eq("id", classId);
-      if (error) throw error;
+      const res = await fetch(`/api/classes?id=${classId}`, {
+        method: "DELETE",
+      });
+      const json = await res.json();
+
+      if (!res.ok) {
+        throw new Error(json.error || "Failed to delete class");
+      }
 
       toast.success("Class deleted successfully");
       fetchClasses();
