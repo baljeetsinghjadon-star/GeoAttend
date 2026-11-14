@@ -5,11 +5,12 @@ import { createClient } from "@/lib/supabase/client";
 import { ClassItem, UserRole } from "@/types/database";
 import { ClassForm } from "@/components/admin/ClassForm";
 import { EnrollmentModal } from "@/components/admin/EnrollmentModal";
+import { BulkStudentModal } from "@/components/admin/BulkStudentModal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { BookOpen, Plus, Users, Edit2, Trash2, GraduationCap } from "lucide-react";
+import { BookOpen, Plus, Users, Edit2, Trash2, GraduationCap, UserPlus } from "lucide-react";
 
 interface ClassManagerProps {
   role: UserRole;
@@ -24,6 +25,7 @@ export function ClassManager({ role }: ClassManagerProps) {
   const [classes, setClasses] = useState<ClassWithCount[]>([]);
   const [loading, setLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isBulkStudentModalOpen, setIsBulkStudentModalOpen] = useState(false);
   const [selectedClassToEdit, setSelectedClassToEdit] = useState<ClassItem | null>(null);
   const [rosterClass, setRosterClass] = useState<ClassItem | null>(null);
 
@@ -87,16 +89,26 @@ export function ClassManager({ role }: ClassManagerProps) {
           </p>
         </div>
 
-        <Button
-          onClick={() => {
-            setSelectedClassToEdit(null);
-            setIsFormOpen(true);
-          }}
-          className="gap-2 self-start sm:self-auto"
-        >
-          <Plus className="h-4 w-4" />
-          Create New Class
-        </Button>
+        <div className="flex flex-wrap items-center gap-2.5 self-start sm:self-auto">
+          <Button
+            variant="outline"
+            onClick={() => setIsBulkStudentModalOpen(true)}
+            className="gap-2 bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700"
+          >
+            <UserPlus className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            Bulk Add Students
+          </Button>
+          <Button
+            onClick={() => {
+              setSelectedClassToEdit(null);
+              setIsFormOpen(true);
+            }}
+            className="gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            Create New Class
+          </Button>
+        </div>
       </div>
 
       {loading ? (
@@ -200,6 +212,14 @@ export function ClassManager({ role }: ClassManagerProps) {
         open={!!rosterClass}
         onOpenChange={(open) => !open && setRosterClass(null)}
         selectedClass={rosterClass}
+      />
+
+      {/* Bulk Student Onboarding Modal */}
+      <BulkStudentModal
+        open={isBulkStudentModalOpen}
+        onOpenChange={setIsBulkStudentModalOpen}
+        classes={classes}
+        onSuccess={fetchClasses}
       />
     </div>
   );

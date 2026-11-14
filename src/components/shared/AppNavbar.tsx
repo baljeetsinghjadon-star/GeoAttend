@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, LogOut, Moon, Sun } from "lucide-react";
+import { MapPin, LogOut } from "lucide-react";
+import { ThemeToggle } from "@/components/shared/ThemeToggle";
 import { Profile } from "@/types/database";
 
 interface AppNavbarProps {
@@ -97,19 +98,7 @@ export function AppNavbar({ profile }: AppNavbarProps) {
           )}
 
           {/* Theme Toggle Button */}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleTheme}
-            aria-label="Toggle theme"
-            className="rounded-xl h-9 w-9"
-          >
-            {isDark ? (
-              <Sun className="h-4 w-4 text-amber-400" />
-            ) : (
-              <Moon className="h-4 w-4 text-slate-600" />
-            )}
-          </Button>
+          <ThemeToggle />
 
           {/* Sign Out Button */}
           <Button

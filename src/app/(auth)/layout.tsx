@@ -1,6 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import { MapPin } from "lucide-react";
+import { ThemeToggle } from "@/components/shared/ThemeToggle";
 
 export default function AuthLayout({
   children,
@@ -8,7 +9,10 @@ export default function AuthLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-radial-[at_top_right] from-blue-50 via-slate-50 to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 flex flex-col justify-center items-center p-4 sm:p-6">
+    <div className="min-h-screen bg-radial-[at_top_right] from-blue-50 via-slate-50 to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 flex flex-col justify-center items-center p-4 sm:p-6 relative">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
       <div className="w-full max-w-md space-y-6">
         <div className="text-center space-y-2">
           <Link

@@ -28,18 +28,7 @@ export async function GET(req: NextRequest) {
       .select("*, class:classes(*), zone:zones(*)")
       .order("start_time", { ascending: false });
 
-    if (role === "teacher") {
-      const { data: myClasses } = await adminClient
-        .from("classes")
-        .select("id")
-        .eq("teacher_id", user.id);
-
-      const classIds = (myClasses || []).map((c) => c.id);
-      if (classIds.length === 0) {
-        return NextResponse.json({ sessions: [] });
-      }
-      query = query.in("class_id", classIds);
-    } else if (role === "student") {
+    if (role === "student") {
       // Get enrolled classes
       const { data: enrollments } = await adminClient
         .from("class_enrollments")
@@ -115,19 +104,6 @@ export async function POST(req: NextRequest) {
 
     if (require_code && (!code || code.length !== 6)) {
       return NextResponse.json({ error: "Anti-cheat code must be 6 digits" }, { status: 400 });
-    }
-
-    // Verify teacher owns the class if teacher
-    if (profile.role === "teacher") {
-      const { data: targetClass } = await adminClient
-        .from("classes")
-        .select("teacher_id")
-        .eq("id", class_id)
-        .single();
-
-      if (targetClass?.teacher_id !== user.id) {
-        return NextResponse.json({ error: "You can only launch sessions for your own classes." }, { status: 403 });
-      }
     }
 
     const { data: newSession, error: insertErr } = await adminClient

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/shared/ThemeToggle";
 import { MapPin, ShieldCheck, Smartphone, Clock, ArrowRight, CheckCircle2 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -39,6 +40,7 @@ export default async function HomePage() {
           </div>
 
           <div className="flex items-center gap-2">
+            <ThemeToggle />
             <Link href="/login">
               <Button variant="ghost" size="sm" className="font-semibold">
                 Sign In

@@ -44,7 +44,7 @@ export function SessionForm({
     async function loadSelectData() {
       const supabase = createClient();
       const [classRes, zoneRes] = await Promise.all([
-        fetch("/api/classes").then((r) => r.json()),
+        fetch("/api/classes?all=true").then((r) => r.json()),
         fetch("/api/zones").then((r) => r.json()),
       ]);
       setClasses(classRes.classes || []);

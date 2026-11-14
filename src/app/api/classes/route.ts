@@ -23,13 +23,23 @@ export async function GET(req: NextRequest) {
       .single();
 
     const role = profile?.role || "student";
+    const { searchParams } = new URL(req.url);
+    const getAll = searchParams.get("all") === "true";
 
     let query = adminClient
       .from("classes")
       .select("*, teacher:profiles!classes_teacher_id_fkey(full_name, email)");
 
-    if (role === "teacher") {
-      query = query.eq("teacher_id", user.id);
+    if (role === "teacher" && !getAll) {
+      // If teacher has their own classes, show them; otherwise show all campus classes
+      const { data: ownClasses } = await adminClient
+        .from("classes")
+        .select("id")
+        .eq("teacher_id", user.id);
+
+      if (ownClasses && ownClasses.length > 0) {
+        query = query.eq("teacher_id", user.id);
+      }
     }
 
     const { data: rawClasses, error: fetchErr } = await query.order("created_at", {
