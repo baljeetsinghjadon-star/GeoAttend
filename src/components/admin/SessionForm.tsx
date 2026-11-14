@@ -45,10 +45,10 @@ export function SessionForm({
       const supabase = createClient();
       const [classRes, zoneRes] = await Promise.all([
         fetch("/api/classes").then((r) => r.json()),
-        supabase.from("zones").select("*").order("name"),
+        fetch("/api/zones").then((r) => r.json()),
       ]);
       setClasses(classRes.classes || []);
-      setZones(zoneRes.data || []);
+      setZones(zoneRes.zones || []);
     }
 
     if (open) {
@@ -101,9 +101,7 @@ export function SessionForm({
 
     setLoading(true);
     try {
-      const supabase = createClient();
-
-      const payload = {
+      const payload: Record<string, unknown> = {
         class_id: classId,
         zone_id: zoneId,
         title,
@@ -114,19 +112,19 @@ export function SessionForm({
       };
 
       if (sessionToEdit) {
-        const { error } = await supabase
-          .from("sessions")
-          .update(payload)
-          .eq("id", sessionToEdit.id);
-
-        if (error) throw error;
-        toast.success("Attendance session updated");
-      } else {
-        const { error } = await supabase.from("sessions").insert(payload);
-        if (error) throw error;
-        toast.success("Attendance session launched successfully!");
+        payload.id = sessionToEdit.id;
       }
 
+      const res = await fetch("/api/sessions", {
+        method: sessionToEdit ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to save session");
+
+      toast.success(sessionToEdit ? "Attendance session updated" : "Attendance session launched successfully!");
       onSuccess();
       onOpenChange(false);
     } catch (err: unknown) {

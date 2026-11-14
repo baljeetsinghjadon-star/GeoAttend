@@ -25,15 +25,13 @@ export function ZoneManager({ role }: ZoneManagerProps) {
   const fetchZones = async () => {
     setLoading(true);
     try {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("zones")
-        .select("*")
-        .order("created_at", { ascending: false });
+      const res = await fetch("/api/zones");
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to load zones");
 
-      if (error) throw error;
-      setZones(data || []);
-      if (data && data.length > 0 && !previewZone) {
+      const data = json.zones || [];
+      setZones(data);
+      if (data.length > 0 && !previewZone) {
         setPreviewZone(data[0]);
       }
     } catch (err: unknown) {
@@ -54,9 +52,11 @@ export function ZoneManager({ role }: ZoneManagerProps) {
     }
 
     try {
-      const supabase = createClient();
-      const { error } = await supabase.from("zones").delete().eq("id", zoneId);
-      if (error) throw error;
+      const res = await fetch(`/api/zones?id=${zoneId}`, {
+        method: "DELETE",
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to delete zone");
 
       toast.success("Zone deleted successfully");
       if (previewZone?.id === zoneId) {

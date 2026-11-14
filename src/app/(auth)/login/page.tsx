@@ -34,7 +34,6 @@ function LoginForm() {
       setEmail("student@geoattend.app");
       setPassword("Student@123456");
     }
-    toast.info(`Filled credentials for demo ${role.toUpperCase()}`);
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -64,8 +63,6 @@ function LoginForm() {
         .select("role, full_name")
         .eq("id", data.user.id)
         .single();
-
-      toast.success(`Welcome back, ${profile?.full_name || "User"}!`);
 
       const targetPath = redirectTo || (profile?.role ? `/${profile.role}` : "/student");
       router.push(targetPath);

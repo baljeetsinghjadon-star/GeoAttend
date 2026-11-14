@@ -25,34 +25,15 @@ export default function StudentDashboardPage() {
 
       if (!user) return;
 
-      // 1. Get classes student is enrolled in
-      const { data: enrollments, error: enrollErr } = await supabase
-        .from("class_enrollments")
-        .select("class_id")
-        .eq("student_id", user.id);
+      const res = await fetch("/api/sessions");
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to load sessions");
 
-      if (enrollErr) throw enrollErr;
+      const sessData: ClassSession[] = json.sessions || [];
+      setSessions(sessData);
 
-      const classIds = (enrollments || []).map((e) => e.class_id);
-
-      if (classIds.length === 0) {
-        setSessions([]);
-        setLoading(false);
-        return;
-      }
-
-      // 2. Get active / scheduled sessions for these classes
-      const { data: sessData, error: sessErr } = await supabase
-        .from("sessions")
-        .select("*, class:classes(*), zone:zones(*)")
-        .in("class_id", classIds)
-        .order("start_time", { ascending: true });
-
-      if (sessErr) throw sessErr;
-      setSessions(sessData || []);
-
-      // 3. Get student's attendance submissions for these sessions
-      const sessionIds = (sessData || []).map((s) => s.id);
+      // Get student's attendance submissions for these sessions
+      const sessionIds = sessData.map((s) => s.id);
       if (sessionIds.length > 0) {
         const { data: attData } = await supabase
           .from("attendance")

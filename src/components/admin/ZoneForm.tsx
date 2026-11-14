@@ -89,41 +89,28 @@ export function ZoneForm({
 
     setLoading(true);
     try {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const payload: Record<string, unknown> = {
+        name,
+        description,
+        latitude,
+        longitude,
+        radiusMeters,
+      };
 
       if (zoneToEdit) {
-        // Update
-        const { error } = await supabase
-          .from("zones")
-          .update({
-            name,
-            description,
-            latitude,
-            longitude,
-            radius_meters: radiusMeters,
-          })
-          .eq("id", zoneToEdit.id);
-
-        if (error) throw error;
-        toast.success("Geofence zone updated successfully!");
-      } else {
-        // Insert
-        const { error } = await supabase.from("zones").insert({
-          name,
-          description,
-          latitude,
-          longitude,
-          radius_meters: radiusMeters,
-          created_by: user?.id,
-        });
-
-        if (error) throw error;
-        toast.success("Geofence zone created successfully!");
+        payload.id = zoneToEdit.id;
       }
 
+      const res = await fetch("/api/zones", {
+        method: zoneToEdit ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to save zone");
+
+      toast.success(zoneToEdit ? "Geofence zone updated successfully!" : "Geofence zone created successfully!");
       onSuccess();
       onOpenChange(false);
     } catch (err: unknown) {

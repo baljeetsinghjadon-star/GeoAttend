@@ -39,52 +39,12 @@ export function SessionManager({ role }: SessionManagerProps) {
   const fetchSessions = async () => {
     setLoading(true);
     try {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const res = await fetch("/api/sessions");
+      const json = await res.json();
 
-      let query = supabase
-        .from("sessions")
-        .select("*, class:classes(*), zone:zones(*)")
-        .order("start_time", { ascending: false });
+      if (!res.ok) throw new Error(json.error || "Failed to load sessions");
 
-      if (role === "teacher" && user) {
-        // Filter sessions where teacher teaches the class
-        const { data: myClasses } = await supabase
-          .from("classes")
-          .select("id")
-          .eq("teacher_id", user.id);
-        const myClassIds = (myClasses || []).map((c) => c.id);
-        if (myClassIds.length > 0) {
-          query = query.in("class_id", myClassIds);
-        } else {
-          setSessions([]);
-          setLoading(false);
-          return;
-        }
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
-
-      // Fetch attendance counts
-      const sessionsWithCounts = await Promise.all(
-        (data || []).map(async (sess) => {
-          const { count } = await supabase
-            .from("attendance")
-            .select("*", { count: "exact", head: true })
-            .eq("session_id", sess.id)
-            .eq("status", "PRESENT");
-
-          return {
-            ...sess,
-            attendanceCount: count || 0,
-          };
-        })
-      );
-
-      setSessions(sessionsWithCounts);
+      setSessions(json.sessions || []);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to load sessions";
       toast.error(msg);
@@ -101,9 +61,11 @@ export function SessionManager({ role }: SessionManagerProps) {
     if (!confirm(`Are you sure you want to delete session "${sessionTitle}"?`)) return;
 
     try {
-      const supabase = createClient();
-      const { error } = await supabase.from("sessions").delete().eq("id", sessionId);
-      if (error) throw error;
+      const res = await fetch(`/api/sessions?id=${sessionId}`, {
+        method: "DELETE",
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to delete session");
 
       toast.success("Session deleted successfully");
       fetchSessions();

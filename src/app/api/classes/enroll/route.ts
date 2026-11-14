@@ -65,10 +65,130 @@ export async function POST(req: NextRequest) {
 
     const adminClient = createAdminClient();
     const body = await req.json();
-    const { classId, studentId } = body;
+    const { classId, studentId, emails } = body;
 
-    if (!classId || !studentId) {
-      return NextResponse.json({ error: "classId and studentId are required" }, { status: 400 });
+    if (!classId) {
+      return NextResponse.json({ error: "classId is required" }, { status: 400 });
+    }
+
+    // --- BULK ENROLLMENT BY EMAILS ---
+    if (emails) {
+      const emailList: string[] = Array.isArray(emails)
+        ? emails
+        : String(emails)
+            .split(/[\n,; ]+/)
+            .map((e) => e.trim().toLowerCase())
+            .filter((e) => e.length > 3 && e.includes("@"));
+
+      if (emailList.length === 0) {
+        return NextResponse.json(
+          { error: "No valid email addresses provided. Please enter at least one email." },
+          { status: 400 }
+        );
+      }
+
+      let enrolledCount = 0;
+      let newAccountsCount = 0;
+      let alreadyEnrolledCount = 0;
+      const errors: string[] = [];
+
+      for (const email of emailList) {
+        try {
+          // 1. Check if profile exists
+          let studentUid: string | null = null;
+          const { data: existingProfile } = await adminClient
+            .from("profiles")
+            .select("id")
+            .eq("email", email)
+            .maybeSingle();
+
+          if (existingProfile) {
+            studentUid = existingProfile.id;
+          } else {
+            // 2. Create auth user with default password
+            const defaultPassword = "Student@123456";
+            const displayName = email.split("@")[0];
+
+            const { data: newUser, error: createErr } =
+              await adminClient.auth.admin.createUser({
+                email,
+                password: defaultPassword,
+                email_confirm: true,
+                user_metadata: {
+                  full_name: displayName,
+                  role: "student",
+                },
+              });
+
+            if (createErr) {
+              // User might exist in auth.users but not profiles
+              const { data: listUsers } = await adminClient.auth.admin.listUsers();
+              const matchedUser = listUsers?.users?.find(
+                (u) => u.email?.toLowerCase() === email
+              );
+              if (matchedUser) {
+                studentUid = matchedUser.id;
+              } else {
+                errors.push(`Could not create account for ${email}: ${createErr.message}`);
+                continue;
+              }
+            } else if (newUser?.user) {
+              studentUid = newUser.user.id;
+              newAccountsCount++;
+            }
+
+            if (studentUid) {
+              // Ensure profile row exists
+              await adminClient.from("profiles").upsert({
+                id: studentUid,
+                email,
+                full_name: displayName,
+                role: "student",
+              });
+            }
+          }
+
+          if (studentUid) {
+            // 3. Enroll into class
+            const { error: enrollErr } = await adminClient
+              .from("class_enrollments")
+              .insert({
+                class_id: classId,
+                student_id: studentUid,
+              });
+
+            if (enrollErr) {
+              if (enrollErr.code === "23505") {
+                alreadyEnrolledCount++;
+              } else {
+                errors.push(`Error enrolling ${email}: ${enrollErr.message}`);
+              }
+            } else {
+              enrolledCount++;
+            }
+          }
+        } catch (itemErr: unknown) {
+          const msg = itemErr instanceof Error ? itemErr.message : "Unknown error";
+          errors.push(`Failed for ${email}: ${msg}`);
+        }
+      }
+
+      return NextResponse.json({
+        success: true,
+        enrolledCount,
+        newAccountsCount,
+        alreadyEnrolledCount,
+        totalSubmitted: emailList.length,
+        errors,
+      });
+    }
+
+    // --- SINGLE STUDENT ENROLLMENT ---
+    if (!studentId) {
+      return NextResponse.json(
+        { error: "Please select a student or enter email addresses" },
+        { status: 400 }
+      );
     }
 
     const { data: enrollment, error: insertErr } = await adminClient
@@ -82,7 +202,10 @@ export async function POST(req: NextRequest) {
 
     if (insertErr) {
       if (insertErr.code === "23505") {
-        return NextResponse.json({ error: "Student is already enrolled in this class." }, { status: 400 });
+        return NextResponse.json(
+          { error: "Student is already enrolled in this class." },
+          { status: 400 }
+        );
       }
       throw insertErr;
     }
